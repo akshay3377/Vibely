@@ -10,15 +10,15 @@ import ChatSectionHeader from "@/components/features/chat/ChatSectionHeader";
 
 const ChatPage = () => {
   const { id: otherUserId } = useParams();
+  const [otherUserInfo, setOtherUserInfo] = useState({});
+
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [otherUserName, setOtherUserName] = useState("");
-  const [otherUserInitial, setOtherUserInitial] = useState("");
-  const [currentUserInitial, setCurrentUserInitial] = useState("");
+
   const bottomRef = useRef(null);
   const chatContainerRef = useRef(null);
-  const currentUserCookie = getCookie("USER");
-  const currentUser = currentUserCookie;
+
+  const currentUser = JSON.parse(getCookie("USER"));
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -31,10 +31,11 @@ const ChatPage = () => {
 
   const generateChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
 
+  // Listen for chat messages
   useEffect(() => {
-    if (!currentUser || !otherUserId) return;
+    if (!currentUser?.id || !otherUserId) return;
 
-    const chatId = generateChatId(currentUser, otherUserId);
+    const chatId = generateChatId(currentUser.id, otherUserId);
     const messagesRef = ref(realTimeDb, `chats/${chatId}`);
 
     const unsubscribe = onValue(messagesRef, (snapshot) => {
@@ -43,16 +44,27 @@ const ChatPage = () => {
     });
 
     return () => unsubscribe();
-  }, [currentUser, otherUserId]);
+  }, [currentUser?.id, otherUserId]);
+
+  // Fetch other user info
+  useEffect(() => {
+    if (!otherUserId) return;
+    const userRef = ref(realTimeDb, `users/${otherUserId}`);
+    const unsubscribe = onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) setOtherUserInfo(data);
+    });
+    return () => unsubscribe();
+  }, [otherUserId]);
 
   const sendMessage = async () => {
-    if (!message.trim() || !currentUser || !otherUserId) return;
+    if (!message.trim() || !currentUser?.id || !otherUserId) return;
 
-    const chatId = generateChatId(currentUser, otherUserId);
+    const chatId = generateChatId(currentUser.id, otherUserId);
     const messagesRef = ref(realTimeDb, `chats/${chatId}`);
 
     const newMessage = {
-      senderId: currentUser,
+      senderId: currentUser.id,
       receiverId: otherUserId,
       text: message,
       timestamp: new Date().toISOString(),
@@ -61,9 +73,9 @@ const ChatPage = () => {
     await push(messagesRef, newMessage);
     setMessage("");
 
+    // Send notification to other user if token exists
     const tokenSnap = await get(ref(realTimeDb, `fcmTokens/${otherUserId}`));
     const fcmToken = tokenSnap.val();
-
 
     if (fcmToken) {
       await fetch("/api/sendNotification", {
@@ -71,35 +83,12 @@ const ChatPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token: fcmToken,
-          title: `${otherUserName}`,
+          title: otherUserInfo.name || "New Message",
           body: message,
         }),
       });
     }
   };
-
-  useEffect(() => {
-    if (!otherUserId) return;
-    const userRef = ref(realTimeDb, `users/${otherUserId}`);
-    onValue(userRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data?.name) {
-        setOtherUserName(data.name);
-        setOtherUserInitial(data.name.charAt(0).toUpperCase());
-      }
-    });
-  }, [otherUserId]);
-
-  useEffect(() => {
-    if (!currentUserCookie) return;
-    const userRef = ref(realTimeDb, `users/${currentUserCookie}`);
-    onValue(userRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data?.name) {
-        setCurrentUserInitial(data.name.charAt(0).toUpperCase());
-      }
-    });
-  }, [currentUserCookie]);
 
   // Group messages by date
   const groupedMessages = messages.reduce((acc, msg) => {
@@ -111,10 +100,7 @@ const ChatPage = () => {
 
   return (
     <div className="flex flex-col h-full bg-ghost md:rounded-lg">
-      <ChatSectionHeader
-        otherUserName={otherUserName}
-        otherUserInitial={otherUserInitial}
-      />
+      <ChatSectionHeader otherUserInfo={otherUserInfo} />
 
       <div
         ref={chatContainerRef}
@@ -144,18 +130,30 @@ const ChatPage = () => {
               </div>
 
               {msgs.map((msg, index) => {
-                const isMe = msg.senderId === currentUser;
+                const isMe = msg.senderId === currentUser?.id;
                 const isLastInGroup =
                   index === msgs.length - 1 ||
                   msgs[index + 1].senderId !== msg.senderId;
 
-                const avatar = (
-                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-semibold">
-                    {isMe ? currentUserInitial : otherUserInitial}
-                  </div>
-                );
+                // Avatar for sender
+                const avatar = (user) =>
+                  user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.name || "User"}
+                      className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-semibold">
+                      {user.name ? user.name.charAt(0).toUpperCase() : "?"}
+                    </div>
+                  );
 
-                const avatarSpacer = <div className="w-6 h-6 md:w-8 md:h-8 " />;
+                // User objects for current user and other user
+                const senderUser = isMe ? currentUser : otherUserInfo;
+
+                const avatarSpacer = <div className="w-6 h-6 md:w-8 md:h-8" />;
 
                 return (
                   <div
@@ -164,12 +162,13 @@ const ChatPage = () => {
                       isMe ? "justify-end" : "justify-start"
                     }`}
                   >
-                    {!isMe && (isLastInGroup ? avatar : avatarSpacer)}
+                    {!isMe &&
+                      (isLastInGroup ? avatar(senderUser) : avatarSpacer)}
                     <div
-                      className={`max-w-[80%]  md:max-w-[60%] px-4 py-4 rounded-xl shadow-lg ${
+                      className={`max-w-[80%] md:max-w-[60%] px-4 py-4 rounded-xl shadow-lg ${
                         isMe
-                          ? "  bg-primary text-white rounded-full"
-                          : "bg-ghost dark:text-white rounded-full  "
+                          ? "bg-primary text-white rounded-full"
+                          : "bg-ghost dark:text-white rounded-full"
                       }`}
                     >
                       <p className="whitespace-pre-wrap break-words text-sm">
@@ -179,7 +178,8 @@ const ChatPage = () => {
                         {moment(msg.timestamp).format("hh:mm A")}
                       </div>
                     </div>
-                    {isMe && (isLastInGroup ? avatar : avatarSpacer)}
+                    {isMe &&
+                      (isLastInGroup ? avatar(senderUser) : avatarSpacer)}
                   </div>
                 );
               })}

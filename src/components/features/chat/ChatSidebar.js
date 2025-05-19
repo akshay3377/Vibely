@@ -8,27 +8,40 @@ import { deleteCookie, getCookie } from "cookies-next";
 import { FirebaseAuth, realTimeDb } from "@/lib/firebase";
 import Button from "@/components/button";
 
-
 export default function ChatSidebar() {
   const { id: activeChatId } = useParams();
   const [users, setUsers] = useState([]);
-  const currentUser = getCookie("USER");
   const router = useRouter();
 
+  // Parse the USER cookie JSON safely
+  let currentUser = null;
+  try {
+    const userCookie = getCookie("USER");
+    if (userCookie) {
+      currentUser =
+        typeof userCookie === "string" ? JSON.parse(userCookie) : userCookie;
+    }
+  } catch (e) {
+    console.error("Error parsing USER cookie:", e);
+  }
+
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser?.id) return;
 
     const usersRef = ref(realTimeDb, "users");
     const unsubscribeFns = [];
 
     const usersListener = onValue(usersRef, (snapshot) => {
       const data = snapshot.val() || {};
-      const userList = Object.values(data).filter((u) => u.id !== currentUser);
+      // Exclude current user
+      const userList = Object.values(data).filter(
+        (u) => u.id !== currentUser.id
+      );
 
-      setUsers(userList); // base list
+      setUsers(userList);
 
       userList.forEach((user) => {
-        const chatId = [user.id, currentUser].sort().join("_");
+        const chatId = [user.id, currentUser.id].sort().join("_");
         const chatQuery = query(
           ref(realTimeDb, `chats/${chatId}`),
           limitToLast(1)
@@ -40,19 +53,18 @@ export default function ChatSidebar() {
 
           const last = Object.values(messages)[0];
 
-          setUsers(
-            (prevUsers) =>
-              prevUsers
-                .map((u) =>
-                  u.id === user.id
-                    ? {
-                        ...u,
-                        lastMessage: last.text,
-                        timestamp: last.timestamp,
-                      }
-                    : u
-                )
-                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) // sort by latest
+          setUsers((prevUsers) =>
+            prevUsers
+              .map((u) =>
+                u.id === user.id
+                  ? {
+                      ...u,
+                      lastMessage: last.text,
+                      timestamp: last.timestamp,
+                    }
+                  : u
+              )
+              .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
           );
         });
 
@@ -64,25 +76,7 @@ export default function ChatSidebar() {
       off(usersRef);
       unsubscribeFns.forEach((unsub) => unsub());
     };
-  }, [currentUser]);
-
-  const getColorFromName = (name) => {
-    const colors = [
-      "bg-blue-500",
-      "bg-red-500",
-      "bg-green-500",
-      "bg-yellow-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-    ];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
+  }, [currentUser?.id]);
 
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
@@ -109,7 +103,6 @@ export default function ChatSidebar() {
       <ul className="flex-1 overflow-y-auto">
         {users.map((u) => {
           const isActive = u.id === activeChatId;
-          const avatarColor = getColorFromName(u.name || "");
 
           return (
             <li
@@ -124,11 +117,13 @@ export default function ChatSidebar() {
                     : ""
                 }`}
               >
-                <div
-                  className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-lg font-semibold ${avatarColor}`}
-                >
-                  {u.name?.charAt(0).toUpperCase()}
-                </div>
+                {u.photoURL ? (
+                  <img
+                    src={u.photoURL}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : null}
 
                 <div className="flex-1 min-w-0">
                   <div className="text-md font-medium truncate">{u.name}</div>

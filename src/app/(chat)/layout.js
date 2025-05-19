@@ -1,14 +1,8 @@
-// import { Geist, Geist_Mono } from "next/font/google";
+
 import { Inter } from "next/font/google";
 import "../../styles/chat.globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import Notification from "@/components/notification";
-import { Toaster } from "react-hot-toast";
-
-// const geistSans = Geist({
-//   variable: "--font-geist-sans",
-//   subsets: ["latin"],
-// });
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,17 +10,12 @@ const inter = Inter({
   // weight :["400" , '700']
 });
 
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"],
-// });
-
 export const metadata = {
   title: "Vibely | Chat app",
   icons: [
     {
       rel: "icon",
-      url: "/images/timeline.webp",
+      url: "/icon512_maskable.png",
       sizes: "32x32",
       type: "image/webp",
     },
@@ -44,7 +33,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange
         >
           {children}
-          <Toaster />
+          {/* <Toaster /> */}
 
           <Notification />
         </ThemeProvider>

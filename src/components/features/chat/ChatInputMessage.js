@@ -2,7 +2,7 @@
 import React, { useRef, useState } from "react";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
-import {SendIcon} from "@/icons";
+import { SendIcon } from "@/icons";
 
 export default function ChatInputMessage({ setMessage, sendMessage, message }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);

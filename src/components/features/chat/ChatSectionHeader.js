@@ -4,7 +4,7 @@ import {BackIcon} from "@/icons";
 import { useRouter } from "next/navigation";
 import React from "react";
 
-export default function ChatSectionHeader({ otherUserName, otherUserInitial }) {
+export default function ChatSectionHeader({ otherUserInfo }) {
   const router = useRouter();
 
   return (
@@ -17,12 +17,16 @@ export default function ChatSectionHeader({ otherUserName, otherUserInitial }) {
       </button>
 
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8   rounded-full bg-blue-500 text-white flex items-center justify-center text-sm ">
-          {otherUserInitial}
-        </div>
+      <img
+    src={otherUserInfo?.photoURL}
+    alt={otherUserInfo.name || "User"}
+    className="w-8 h-8 rounded-full object-cover"
+    loading="lazy"
+  />
+        
 
         <div className="flex flex-col">
-          <span className="text-md "> {otherUserName}</span>
+          <span className="text-md "> {otherUserInfo.name}</span>
           {/* <span className="text-xs">Online</span> */}
         </div>
       </div>

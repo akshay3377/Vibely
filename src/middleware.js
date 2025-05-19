@@ -3,15 +3,27 @@ import { NextResponse } from "next/server";
 
 export async function middleware(req) {
   const cookieStore = await cookies();
-  const theme = cookieStore.get("USER");
+  const data = cookieStore.get("USER");
 
-  const token = theme?.value;
 
-  console.log("token", token);
+
+
+  let user = null;
+if (data) {
+  try {
+    user = JSON.parse(data?.value);
+  } catch (err) {
+    console.error("Invalid cookie format:", err);
+  }
+}
+
+
+
+ 
 
   const url = req.url;
 
-  if (token) {
+  if (user?.id) {
     if (url.includes("/login") || url.includes("/register")) {
       return NextResponse.redirect(new URL("/conversation", req.url));
     }
