@@ -44,7 +44,11 @@ export default app;
 
 const currentUserId = getCookie("USER");
 
+const parse = JSON.parse(currentUserId)
+
 export const requestForToken = async () => {
+console.log('currentUserIdttt', currentUserId)
+  
   try {
     const currentToken = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
@@ -52,7 +56,7 @@ export const requestForToken = async () => {
 
     if (currentToken) {
 
-      await set(ref(realTimeDb, `fcmTokens/${currentUserId}`), currentToken);
+      await set(ref(realTimeDb, `fcmTokens/${parse?.id}`), currentToken);
     } else {
       console.log(
         "No registration token available. Request permission to generate one."

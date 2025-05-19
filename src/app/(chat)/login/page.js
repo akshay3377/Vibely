@@ -144,8 +144,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-xl shadow-md text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen ">
+      <div className=" p-8 rounded-xl shadow-md text-center">
         <h1 className="text-2xl font-bold mb-6">Login</h1>
         <button
           onClick={handleGoogleLogin}

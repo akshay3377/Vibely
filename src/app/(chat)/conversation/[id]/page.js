@@ -1,9 +1,11 @@
 "use client";
+
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ref, push, onValue, get } from "firebase/database";
 import { getCookie } from "cookies-next";
 import moment from "moment";
+import Image from "next/image";
 import { realTimeDb } from "@/lib/firebase";
 import ChatInputMessage from "@/components/features/chat/ChatInputMessage";
 import ChatSectionHeader from "@/components/features/chat/ChatSectionHeader";
@@ -11,15 +13,27 @@ import ChatSectionHeader from "@/components/features/chat/ChatSectionHeader";
 const ChatPage = () => {
   const { id: otherUserId } = useParams();
   const [otherUserInfo, setOtherUserInfo] = useState({});
-
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
   const bottomRef = useRef(null);
   const chatContainerRef = useRef(null);
 
-  const currentUser = JSON.parse(getCookie("USER"));
+  const [currentUser, setCurrentUser] = useState(null);
 
+  // Parse user from cookie once
+  useEffect(() => {
+    try {
+      const userCookie = getCookie("USER");
+      if (userCookie) {
+        setCurrentUser(JSON.parse(userCookie));
+      }
+    } catch (error) {
+      console.error("Failed to parse USER cookie:", error);
+    }
+  }, []);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTo({
@@ -49,14 +63,17 @@ const ChatPage = () => {
   // Fetch other user info
   useEffect(() => {
     if (!otherUserId) return;
+
     const userRef = ref(realTimeDb, `users/${otherUserId}`);
     const unsubscribe = onValue(userRef, (snapshot) => {
       const data = snapshot.val();
       if (data) setOtherUserInfo(data);
     });
+
     return () => unsubscribe();
   }, [otherUserId]);
 
+  // Send a message
   const sendMessage = async () => {
     if (!message.trim() || !currentUser?.id || !otherUserId) return;
 
@@ -73,9 +90,13 @@ const ChatPage = () => {
     await push(messagesRef, newMessage);
     setMessage("");
 
-    // Send notification to other user if token exists
+    // Send FCM push notification if token exists
     const tokenSnap = await get(ref(realTimeDb, `fcmTokens/${otherUserId}`));
+
+
     const fcmToken = tokenSnap.val();
+
+    console.log('fcmTokeneee', tokenSnap ,  fcmToken)
 
     if (fcmToken) {
       await fetch("/api/sendNotification", {
@@ -120,7 +141,7 @@ const ChatPage = () => {
 
           return (
             <div key={date}>
-              {/* Date label */}
+              {/* Date separator */}
               <div className="flex items-center justify-center my-4">
                 <div className="flex-grow border-t border-gray-500" />
                 <span className="mx-2 text-xs text-white whitespace-nowrap">
@@ -135,23 +156,20 @@ const ChatPage = () => {
                   index === msgs.length - 1 ||
                   msgs[index + 1].senderId !== msg.senderId;
 
-                // Avatar for sender
+                const senderUser = isMe ? currentUser : otherUserInfo;
+
                 const avatar = (user) =>
-                  user.photoURL ? (
-                    <img
+                  user?.photoURL ? (
+                    <Image
                       src={user.photoURL}
-                      alt={user.name || "User"}
-                      className="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover"
-                      loading="lazy"
+                      alt={user.name || "Avatar"}
+                      width={32}
+                      height={32}
+                      className="rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-semibold">
-                      {user.name ? user.name.charAt(0).toUpperCase() : "?"}
-                    </div>
+                    <></>
                   );
-
-                // User objects for current user and other user
-                const senderUser = isMe ? currentUser : otherUserInfo;
 
                 const avatarSpacer = <div className="w-6 h-6 md:w-8 md:h-8" />;
 

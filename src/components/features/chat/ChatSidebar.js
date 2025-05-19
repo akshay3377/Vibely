@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ref, onValue, query, limitToLast, off } from "firebase/database";
@@ -118,10 +119,12 @@ export default function ChatSidebar() {
                 }`}
               >
                 {u.photoURL ? (
-                  <img
+                  <Image
                     src={u.photoURL}
                     alt={u.name}
-                    className="w-10 h-10 rounded-full object-cover"
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover"
                   />
                 ) : null}
 
