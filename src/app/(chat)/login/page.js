@@ -91,7 +91,6 @@
 
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { FirebaseAuth } from "@/lib/firebase"; // your initialized Firebase Auth
@@ -112,28 +111,25 @@ export default function LoginPage() {
 
       console.log("Google login success:", user);
 
-      console.log("user.providerData[0].uid", user.providerData[0].uid);
-
       const data = {
-        name: user.providerData[0].displayName,
-        email: user.providerData[0].email,
-        photoURL: user.providerData[0].photoURL,
-        providerId: user.providerData[0].providerId,
-        id: user.uid,
+        name: user.providerData[0]?.displayName,
+        email: user.providerData[0]?.email,
+        photoURL: user.providerData[0]?.photoURL,
+        providerId: user.providerData[0]?.providerId,
+        id: user?.uid,
       };
 
-      console.log("data", data);
       // Optional: Get Firebase ID token
       const token = await user.getIdToken();
 
       const userRef = ref(realTimeDb, `users/${user.uid}`);
 
       await set(userRef, {
-       ...data
+        ...data,
       });
 
       // Store UID or token in cookie
-      setCookie("USER", JSON.stringify('USER'))
+      setCookie("USER", JSON.stringify(data));
 
       toast.success("Login successful!");
       router.push("/conversation");

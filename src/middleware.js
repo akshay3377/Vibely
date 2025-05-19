@@ -5,21 +5,14 @@ export async function middleware(req) {
   const cookieStore = await cookies();
   const data = cookieStore.get("USER");
 
-
-
-
   let user = null;
-if (data) {
-  try {
-    user = JSON.parse(data?.value);
-  } catch (err) {
-    console.error("Invalid cookie format:", err);
+  if (data) {
+    try {
+      user = JSON.parse(data?.value);
+    } catch (err) {
+      console.error("Invalid cookie format:", err);
+    }
   }
-}
-
-
-
- 
 
   const url = req.url;
 

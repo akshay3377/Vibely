@@ -14,7 +14,7 @@ const withPWA = nextPwa({
   dest: "public",
   register: true,
   skipWaiting: true,
-  disable: true, // or true in dev
+  disable: false, // or true in dev
 });
 
 export default withPWA(nextConfig); // ✅ ES Module syntax
