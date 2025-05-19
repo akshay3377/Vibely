@@ -3,10 +3,9 @@ import { ref, set } from "firebase/database";
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
-import { getMessaging, getToken, onMessage } from "firebase/messaging"; 
+import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics, logEvent, isSupported } from 'firebase/analytics';
-
+import { getAnalytics, logEvent, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,20 +14,20 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
-
 
 const app = initializeApp(firebaseConfig);
 
 export const FirebaseAuth = getAuth(app);
 export const realTimeDb = getDatabase(app);
 export const Db = getFirestore(app); // This is Firestore
-export const messaging = typeof window !== "undefined" ? getMessaging(app) : null;
+export const messaging =
+  typeof window !== "undefined" ? getMessaging(app) : null;
 
 let analytics = null;
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   isSupported().then((yes) => {
     if (yes) {
       analytics = getAnalytics(app);
@@ -40,22 +39,18 @@ export { app, analytics, logEvent };
 
 export default app;
 
-
-
-const currentUserId = getCookie("USER");
-
-const parse = JSON.parse(currentUserId)
-
 export const requestForToken = async () => {
-console.log('currentUserIdttt', currentUserId)
-  
+  const currentUserId = getCookie("USER");
+
+  const parse = JSON.parse(currentUserId);
+  console.log("currentUserIdttt", currentUserId);
+
   try {
     const currentToken = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
     });
 
     if (currentToken) {
-
       await set(ref(realTimeDb, `fcmTokens/${parse?.id}`), currentToken);
     } else {
       console.log(
@@ -70,7 +65,6 @@ console.log('currentUserIdttt', currentUserId)
   }
 };
 
-
 export const onMessageListener = () =>
   new Promise((resolve) => {
     onMessage(messaging, (payload) => {
@@ -78,6 +72,5 @@ export const onMessageListener = () =>
       resolve(payload);
     });
   });
-
 
 // databaseURL: "https://portfilio-nextjs-default-rtdb.firebaseio.com",

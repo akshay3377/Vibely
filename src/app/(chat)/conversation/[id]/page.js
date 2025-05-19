@@ -19,6 +19,8 @@ const ChatPage = () => {
   const bottomRef = useRef(null);
   const chatContainerRef = useRef(null);
 
+  console.log("messages", messages);
+
   const [currentUser, setCurrentUser] = useState(null);
 
   // Parse user from cookie once
@@ -45,6 +47,8 @@ const ChatPage = () => {
 
   const generateChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
 
+  const [chatBgColor, setChatBgColor] = useState("");
+
   // Listen for chat messages
   useEffect(() => {
     if (!currentUser?.id || !otherUserId) return;
@@ -59,6 +63,14 @@ const ChatPage = () => {
 
     return () => unsubscribe();
   }, [currentUser?.id, otherUserId]);
+
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+
+    const lastMsg = messages[messages.length - 1];
+
+    setChatBgColor(lastMsg.emotions.color);
+  }, [messages]);
 
   // Fetch other user info
   useEffect(() => {
@@ -80,12 +92,51 @@ const ChatPage = () => {
     const chatId = generateChatId(currentUser.id, otherUserId);
     const messagesRef = ref(realTimeDb, `chats/${chatId}`);
 
+    let summary = "";
+    let emotions = {};
+
+    try {
+      const res = await fetch("/api/gemini-emotions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: message }),
+      });
+      const data = await res.json();
+
+      console.log("data", data);
+      emotions = data;
+    } catch (err) {
+      console.error("Emotions API failed:", err);
+    }
+
+    // 1. Get summary from Gemini API if message is long
+    if (message.length > 80) {
+      try {
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: message }),
+        });
+
+        const data = await res.json();
+        if (data?.output) {
+          summary = data.output.trim();
+        }
+      } catch (err) {
+        console.error("Failed to generate summary:", err);
+      }
+    }
+
     const newMessage = {
       senderId: currentUser.id,
       receiverId: otherUserId,
       text: message,
+      summary: summary || null,
+      emotions: emotions || null,
       timestamp: new Date().toISOString(),
     };
+
+    console.log("summary", summary);
 
     await push(messagesRef, newMessage);
     setMessage("");
@@ -93,10 +144,9 @@ const ChatPage = () => {
     // Send FCM push notification if token exists
     const tokenSnap = await get(ref(realTimeDb, `fcmTokens/${otherUserId}`));
 
-
     const fcmToken = tokenSnap.val();
 
-    console.log('fcmTokeneee', tokenSnap ,  fcmToken)
+    console.log("fcmTokeneee", tokenSnap, fcmToken);
 
     if (fcmToken) {
       await fetch("/api/sendNotification", {
@@ -125,7 +175,8 @@ const ChatPage = () => {
 
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-2 md:px-4 py-2 space-y-3"
+        style={{ backgroundColor: chatBgColor }}
+        className="flex-1  overflow-y-auto px-2 md:px-4 py-2 space-y-3"
       >
         {Object.entries(groupedMessages).map(([date, msgs]) => {
           const isToday = moment(date).isSame(moment(), "day");
@@ -163,9 +214,9 @@ const ChatPage = () => {
                     <Image
                       src={user.photoURL}
                       alt={user.name || "Avatar"}
-                      width={32}
-                      height={32}
-                      className="rounded-full object-cover"
+                      height={100}
+                      width={100}
+                      className="rounded-full object-cover w-6 h-6 md:w-8 md:h-8"
                     />
                   ) : (
                     <></>
@@ -191,6 +242,15 @@ const ChatPage = () => {
                     >
                       <p className="whitespace-pre-wrap break-words text-sm">
                         {msg.text}
+
+                        {msg.summary && currentUser?.id !== msg.senderId ? (
+                          <div className="text-xs  text-white mt-4">
+                            <b>Summary :</b>{" "}
+                            <p className="italic">{msg.summary}</p>
+                          </div>
+                        ) : (
+                          <></>
+                        )}
                       </p>
                       <div className="text-[11px] text-right mt-1 opacity-70">
                         {moment(msg.timestamp).format("hh:mm A")}
