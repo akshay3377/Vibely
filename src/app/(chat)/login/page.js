@@ -133,7 +133,7 @@ export default function LoginPage() {
       });
 
       // Store UID or token in cookie
-      setCookie("USER", data);
+      setCookie("USER", JSON.stringify('USER'))
 
       toast.success("Login successful!");
       router.push("/conversation");
