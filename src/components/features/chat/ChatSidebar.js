@@ -19,12 +19,14 @@ export default function ChatSidebar() {
   try {
     const userCookie = getCookie("USER");
     if (userCookie) {
-      currentUser =
-        typeof userCookie === "string" ? JSON.parse(userCookie) : userCookie;
+
+
+         currentUser = JSON.parse(userCookie);
     }
   } catch (e) {
     console.error("Error parsing USER cookie:", e);
   }
+
 
   useEffect(() => {
     if (!currentUser?.id) return;
