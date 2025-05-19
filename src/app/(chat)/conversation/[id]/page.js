@@ -1,0 +1,202 @@
+"use client";
+import { useParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { ref, push, onValue, get } from "firebase/database";
+import { getCookie } from "cookies-next";
+import moment from "moment";
+import { realTimeDb } from "@/lib/firebase";
+import ChatInputMessage from "@/components/features/chat/ChatInputMessage";
+import ChatSectionHeader from "@/components/features/chat/ChatSectionHeader";
+
+const ChatPage = () => {
+  const { id: otherUserId } = useParams();
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [otherUserName, setOtherUserName] = useState("");
+  const [otherUserInitial, setOtherUserInitial] = useState("");
+  const [currentUserInitial, setCurrentUserInitial] = useState("");
+  const bottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const currentUserCookie = getCookie("USER");
+  const currentUser = currentUserCookie;
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages]);
+
+  const generateChatId = (uid1, uid2) => [uid1, uid2].sort().join("_");
+
+  useEffect(() => {
+    if (!currentUser || !otherUserId) return;
+
+    const chatId = generateChatId(currentUser, otherUserId);
+    const messagesRef = ref(realTimeDb, `chats/${chatId}`);
+
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      setMessages(data ? Object.values(data) : []);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, otherUserId]);
+
+  const sendMessage = async () => {
+    if (!message.trim() || !currentUser || !otherUserId) return;
+
+    const chatId = generateChatId(currentUser, otherUserId);
+    const messagesRef = ref(realTimeDb, `chats/${chatId}`);
+
+    const newMessage = {
+      senderId: currentUser,
+      receiverId: otherUserId,
+      text: message,
+      timestamp: new Date().toISOString(),
+    };
+
+    await push(messagesRef, newMessage);
+    setMessage("");
+
+    const tokenSnap = await get(ref(realTimeDb, `fcmTokens/${otherUserId}`));
+    const fcmToken = tokenSnap.val();
+
+
+    if (fcmToken) {
+      await fetch("/api/sendNotification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: fcmToken,
+          title: `${otherUserName}`,
+          body: message,
+        }),
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!otherUserId) return;
+    const userRef = ref(realTimeDb, `users/${otherUserId}`);
+    onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data?.name) {
+        setOtherUserName(data.name);
+        setOtherUserInitial(data.name.charAt(0).toUpperCase());
+      }
+    });
+  }, [otherUserId]);
+
+  useEffect(() => {
+    if (!currentUserCookie) return;
+    const userRef = ref(realTimeDb, `users/${currentUserCookie}`);
+    onValue(userRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data?.name) {
+        setCurrentUserInitial(data.name.charAt(0).toUpperCase());
+      }
+    });
+  }, [currentUserCookie]);
+
+  // Group messages by date
+  const groupedMessages = messages.reduce((acc, msg) => {
+    const date = moment(msg.timestamp).startOf("day").format("YYYY-MM-DD");
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(msg);
+    return acc;
+  }, {});
+
+  return (
+    <div className="flex flex-col h-full bg-ghost md:rounded-lg">
+      <ChatSectionHeader
+        otherUserName={otherUserName}
+        otherUserInitial={otherUserInitial}
+      />
+
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto px-2 md:px-4 py-2 space-y-3"
+      >
+        {Object.entries(groupedMessages).map(([date, msgs]) => {
+          const isToday = moment(date).isSame(moment(), "day");
+          const isYesterday = moment(date).isSame(
+            moment().subtract(1, "day"),
+            "day"
+          );
+          const label = isToday
+            ? "Today"
+            : isYesterday
+            ? "Yesterday"
+            : moment(date).format("MMMM D, YYYY");
+
+          return (
+            <div key={date}>
+              {/* Date label */}
+              <div className="flex items-center justify-center my-4">
+                <div className="flex-grow border-t border-gray-500" />
+                <span className="mx-2 text-xs text-white whitespace-nowrap">
+                  {label}
+                </span>
+                <div className="flex-grow border-t border-gray-500" />
+              </div>
+
+              {msgs.map((msg, index) => {
+                const isMe = msg.senderId === currentUser;
+                const isLastInGroup =
+                  index === msgs.length - 1 ||
+                  msgs[index + 1].senderId !== msg.senderId;
+
+                const avatar = (
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-semibold">
+                    {isMe ? currentUserInitial : otherUserInitial}
+                  </div>
+                );
+
+                const avatarSpacer = <div className="w-6 h-6 md:w-8 md:h-8 " />;
+
+                return (
+                  <div
+                    key={index}
+                    className={`flex mb-3 items-end gap-2 ${
+                      isMe ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    {!isMe && (isLastInGroup ? avatar : avatarSpacer)}
+                    <div
+                      className={`max-w-[80%]  md:max-w-[60%] px-4 py-4 rounded-xl shadow-lg ${
+                        isMe
+                          ? "  bg-primary text-white rounded-full"
+                          : "bg-ghost dark:text-white rounded-full  "
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap break-words text-sm">
+                        {msg.text}
+                      </p>
+                      <div className="text-[11px] text-right mt-1 opacity-70">
+                        {moment(msg.timestamp).format("hh:mm A")}
+                      </div>
+                    </div>
+                    {isMe && (isLastInGroup ? avatar : avatarSpacer)}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        <div ref={bottomRef} />
+      </div>
+
+      <ChatInputMessage
+        setMessage={setMessage}
+        sendMessage={sendMessage}
+        message={message}
+      />
+    </div>
+  );
+};
+
+export default ChatPage;

@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://akshay13.vercel.app/
+
+# Sitemaps
+Sitemap: https://akshay13.vercel.app/sitemap.xml
