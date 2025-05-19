@@ -176,7 +176,7 @@ const ChatPage = () => {
       <div
         ref={chatContainerRef}
         style={{ backgroundColor: chatBgColor }}
-        className="flex-1  overflow-y-auto px-2 md:px-4 py-2 space-y-3"
+        className="flex-1  overflow-y-auto px-2 md:px-4 py-2 space-y-3 transition-colors duration-500 ease-in-out"
       >
         {Object.entries(groupedMessages).map(([date, msgs]) => {
           const isToday = moment(date).isSame(moment(), "day");
@@ -237,7 +237,7 @@ const ChatPage = () => {
                       className={`max-w-[80%] md:max-w-[60%] px-4 py-4 rounded-xl shadow-lg ${
                         isMe
                           ? "bg-primary text-white rounded-full"
-                          : "bg-ghost dark:text-white rounded-full"
+                          : "bg-white/30 dark:bg-white/10 text-white  rounded-full "
                       }`}
                     >
                       <p className="whitespace-pre-wrap break-words text-sm">

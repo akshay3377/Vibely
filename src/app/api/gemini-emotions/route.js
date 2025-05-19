@@ -28,13 +28,13 @@ Respond ONLY with a JSON object like:
     const result = await model.generateContent(emotionPrompt);
     const textResponse = result.response.text().trim();
 
-    console.log('textResponse:', textResponse);
+    console.log("textResponse:", textResponse);
 
     let parsed = {};
     try {
       // Clean the textResponse by removing markdown code blocks and extracting JSON
       const cleaned = textResponse
-        .replace(/```json|```/g, "")            // Remove markdown code block markers
+        .replace(/```json|```/g, "") // Remove markdown code block markers
         .replace(/^[^{]*({[\s\S]*?})[^}]*$/m, "$1") // Extract JSON object even if surrounded by text
         .trim();
 
