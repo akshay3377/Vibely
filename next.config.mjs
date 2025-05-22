@@ -2,6 +2,11 @@ import nextPwa from "next-pwa";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  //  serverExternalPackages: ['pdf2json'],
+
+      experimental: {
+        serverComponentsExternalPackages: ['pdf2json'],
+    },
   images: {
     domains: [
       "lh3.googleusercontent.com", // Google profile photos
@@ -9,6 +14,9 @@ const nextConfig = {
     ],
   },
 };
+
+
+
 
 const withPWA = nextPwa({
   dest: "public",
