@@ -113,7 +113,7 @@ export default function InterviewPage({ params }) {
           setPhase("done");
         } else {
           setPhase("prep");
-          setTimer(2);
+          setTimer(10);
         }
       } catch (error) {
         console.error("Upload failed:", error);
