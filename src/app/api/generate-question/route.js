@@ -13,7 +13,7 @@ export async function POST(req) {
     }
 
     const prompt = `
-You are an expert technical interviewer. Based on the following resume text, generate a list of 2 relevant technical questions that could be asked in an interview. Make the questions clear and concise.
+You are an expert technical interviewer. Based on the following resume text, generate a list of 5 relevant technical questions that could be asked in an interview. Make the questions clear and concise.
 
 Resume Text:
 ${resumeText}
